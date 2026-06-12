@@ -72,7 +72,7 @@ go build -o .local/tcd-beyond-compare ./cmd/tcd-beyond-compare
 
 要求：
 
-- Go 1.22+
+- Go 1.21.10+
 - macOS / Linux shell 环境
 - 浏览器可访问 `http://127.0.0.1:18767`
 
