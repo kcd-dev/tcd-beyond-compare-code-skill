@@ -2,6 +2,7 @@
 .local/
 logs/
 .trash/
+/tcd-beyond-compare
 dist/
 build/
 tmp/

@@ -30,7 +30,6 @@ bash <repo_root>/scripts/open_beyond_compare.sh <left_path> <right_path>
 已打开 tcd-beyond-compare：
 left=/abs/before
 right=/abs/after
-url=http://127.0.0.1:18767/?left=...&right=...
 url=http://127.0.0.1:18767
 ```
 
