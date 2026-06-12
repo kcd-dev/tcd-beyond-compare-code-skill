@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tcd-beyond-compare · 本地审阅台</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --panel-2: #fcfdff;
+      --line: #e5e7eb;
+      --text: #172033;
+      --muted: #667085;
+      --accent: #2563eb;
+      --accent-2: #60a5fa;
+      --warn: #b45309;
+      --danger: #c62828;
+      --success: #15803d;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --serif: "Iowan Old Style", Georgia, serif;
+      --sans: "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --shadow: 0 16px 48px rgba(15, 23, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 0 0, rgba(37,99,235,.08), transparent 28%),
+        radial-gradient(circle at 100% 0, rgba(198,40,40,.07), transparent 24%),
+        linear-gradient(180deg, #fbfcfe, #f7f8fb 40%, #f1f5f9);
+      color: var(--text);
+      font-family: var(--sans);
+    }
+    body { padding: 18px; }
+    .app {
+      min-height: calc(100vh - 36px);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+    }
+    .topbar, .footer { padding: 18px 24px; border-bottom: 1px solid var(--line); }
+    .topbar { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+    .brand { display: flex; gap: 14px; align-items: center; }
+    .mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #032028;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+    h1 { margin: 0; font-size: 24px; font-family: var(--serif); }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+    .pill {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pill strong { color: var(--text); }
+    .control {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    input[type="text"] {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 14px;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: rgba(37,99,235,.45);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+    }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #c62828, #ef4444);
+      color: #fff7f7;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(198,40,40,.18);
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    .tips {
+      padding: 0 24px 16px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 320px minmax(0,1fr) 400px;
+      gap: 16px;
+      padding: 16px;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .head {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .head h2 { margin: 0; font-size: 15px; }
+    .head p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
+    .body { padding: 12px; overflow: auto; min-height: 0; }
+    .empty {
+      color: var(--muted);
+      line-height: 1.7;
+      padding: 18px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: #fbfcfe;
+    }
+    .file-item {
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid #e7ebf2;
+      background: #ffffff;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .file-item.active {
+      border-color: rgba(198,40,40,.35);
+      background: rgba(198,40,40,.06);
+      box-shadow: inset 0 0 0 1px rgba(198,40,40,.08);
+    }
+    .file-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .path-stack { min-width: 0; }
+    .file-name {
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .file-dir {
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .badge { padding: 4px 8px; border-radius: 999px; font-size: 11px; }
+    .high { background: rgba(198,40,40,.12); color: #b42318; }
+    .mid { background: rgba(180,83,9,.12); color: #b45309; }
+    .low { background: rgba(21,128,61,.10); color: #166534; }
+    .reason {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    .stat {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .signals { display: flex; gap: 8px; flex-wrap: wrap; }
+    .signal {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+    .pane {
+      background: var(--panel-2);
+      border: 1px solid #e6eaf0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .pane-head {
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .pane-head h3 { margin: 0; font-size: 13px; }
+    .pane-head span { color: var(--muted); font-size: 11px; }
+    .lines { font-family: var(--mono); font-size: 12px; line-height: 1.75; }
+    .line {
+      display: grid;
+      grid-template-columns: 56px minmax(0,1fr) 56px minmax(0,1fr);
+      gap: 10px;
+      border-bottom: 1px solid #eef1f5;
+      padding: 0 14px;
+      scroll-margin-top: 120px;
+    }
+    .line.head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(255,255,255,.98);
+      border-bottom-color: #dde3ea;
+    }
+    .line.hot, .line.add, .line.del, .line.change { background: transparent; }
+    .line.risk-high { outline: 1px solid rgba(198,40,40,.28); background: rgba(198,40,40,.06); }
+    .line.flash {
+      box-shadow: inset 0 0 0 1px rgba(198,40,40,.72), 0 0 0 2px rgba(198,40,40,.16);
+      background: rgba(198,40,40,.08);
+    }
+    .num { color: #8a94a6; text-align: right; padding-top: 4px; }
+    .txt {
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 4px 0;
+      min-width: 0;
+    }
+    .txt.before { color: #334155; }
+    .txt.after { color: var(--text); font-weight: 400; }
+    .txt.after.risk-high-text { color: #c62828; font-weight: 600; }
+    .txt.head {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .txt.head.after-head { color: var(--muted); }
+    .articles { display: grid; gap: 12px; }
+    .block {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid #e7ebf2;
+      background: #ffffff;
+      line-height: 1.7;
+    }
+    .block h4 { margin: 0 0 8px; font-size: 14px; font-family: var(--serif); }
+    .block.add { background: rgba(21,128,61,.05); }
+    .block.del { background: rgba(198,40,40,.06); }
+    .focus-card, .note-card {
+      border-radius: 16px;
+      border: 1px solid #e7ebf2;
+      background: #ffffff;
+      margin-bottom: 10px;
+    }
+    .focus-card { padding: 12px; }
+    .focus-top, .note-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .focus-top strong, .note-top strong { font-size: 14px; }
+    .focus-card p, .list li, .decision, .note-text {
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+    .note-card {
+      width: 100%;
+      text-align: left;
+      padding: 12px;
+      color: var(--text);
+      background: #ffffff;
+      cursor: pointer;
+    }
+    .note-card.high {
+      background: linear-gradient(180deg, #fff7f7, #ffffff);
+      border-color: rgba(198,40,40,.22);
+    }
+    .note-card:hover {
+      border-color: #d7deea;
+      box-shadow: 0 8px 24px rgba(15,23,42,.06);
+    }
+    .note-card.high:hover {
+      border-color: rgba(198,40,40,.35);
+      box-shadow: 0 8px 24px rgba(198,40,40,.10);
+    }
+    .note-loc {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--danger);
+      margin-bottom: 8px;
+    }
+    .note-snippet {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #fff5f5;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #7f1d1d;
+      word-break: break-word;
+    }
+    .note-label {
+      margin-top: 8px;
+      margin-bottom: 4px;
+      font-size: 11px;
+      color: var(--warn);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .section-title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .viewer-path {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .footer {
+      border-top: 1px solid var(--line);
+      border-bottom: none;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .runtime { color: var(--text); }
+    @media (max-width: 1320px) { .main { grid-template-columns: 300px minmax(0,1fr) 360px; } }
+    @media (max-width: 1160px) { .main, .control { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">TCD</div>
+        <div>
+          <h1>tcd-beyond-compare</h1>
+          <div class="sub">给 Codex 任务收尾用的本地审阅台：先把真实差异看清，再决定哪里值得人工复核。</div>
+        </div>
+      </div>
+      <div class="pills">
+        <div class="pill"><strong>用途</strong> 任务完成后复查</div>
+        <div class="pill"><strong>输入</strong> 两个文件 / 两个目录</div>
+        <div class="pill"><strong>新增</strong> 右侧笔记直连改动位置</div>
+      </div>
+    </header>
+
+    <section class="control">
+      <label>左侧路径（旧版 / Before）
+        <input id="leftPath" type="text" placeholder="例如：/path/to/before 或 /tmp/before.md" />
+      </label>
+      <label>右侧路径（新版 / After）
+        <input id="rightPath" type="text" placeholder="例如：/path/to/after 或 /tmp/after.md" />
+      </label>
+      <button id="runBtn">开始审计</button>
+    </section>
+    <div class="tips">
+      <div class="tip">支持：文件 vs 文件</div>
+      <div class="tip">支持：目录 vs 目录</div>
+      <div class="tip">忽略：.git / node_modules / .trash</div>
+      <div class="tip">右侧笔记会标出对应行，并写“我认为为什么这样改”</div>
+    </div>
+
+    <main class="main">
+      <aside class="panel">
+        <div class="head">
+          <div><h2>变化对象</h2><p>文件名放前，目录退到次信息，先便于人看。</p></div>
+          <div class="pill" id="countPill">0 个改动</div>
+        </div>
+        <div class="body" id="fileList">
+          <div class="empty">还没有结果。输入两个真实路径后点“开始审计”。</div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="head">
+          <div>
+            <h2 id="viewerTitle">差异视图</h2>
+            <p id="viewerSub">这里会显示真实对比结果。</p>
+            <div class="viewer-path" id="viewerPath"></div>
+          </div>
+          <div class="pill" id="modePill">等待输入</div>
+        </div>
+        <div class="body" id="viewerBody">
+          <div class="empty">等待真实路径输入。建议先用两个小文件试跑，再看目录级对比。</div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="head">
+          <div><h2>重点提示</h2><p>这里只突出我判断为高风险、值得你先审的位置；低风险差异不报警。</p></div>
+          <div class="pill" id="riskPill">未分析</div>
+        </div>
+        <div class="body">
+          <div class="signals" id="signalBox"></div>
+          <div style="height:12px"></div>
+
+          <div class="section-title">对应修改位置</div>
+          <div id="noteBox"><div class="empty">运行后这里会出现“哪些位置我判断为高风险，以及我为什么这样判断”。</div></div>
+
+          <div style="height:4px"></div>
+          <div class="section-title">泛化复核建议</div>
+          <div id="focusBox"><div class="empty">运行后这里会出现“先看哪里、为什么看”。</div></div>
+
+          <div class="focus-card" style="margin-top:12px">
+            <div class="focus-top"><strong>可先略过</strong></div>
+            <ul class="list" id="skipBox"></ul>
+          </div>
+          <div class="focus-card">
+            <div class="focus-top"><strong>规则结论</strong></div>
+            <div class="decision" id="decisionBox">当前还没有结果。</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <div>基础 diff 独立可靠，外部 AI 以后可叠加，但不是当前可用性的前提。</div>
+      <div class="runtime" id="runtimeNote">等待分析</div>
+    </footer>
+  </div>
+
+  <script>
+    const state = { response: null, selectedKey: null };
+    const $ = id => document.getElementById(id);
+
+    $('runBtn').addEventListener('click', runAnalyze);
+    $('leftPath').addEventListener('keydown', e => { if (e.key === 'Enter') runAnalyze(); });
+    $('rightPath').addEventListener('keydown', e => { if (e.key === 'Enter') runAnalyze(); });
+    initFromQuery();
+
+    async function runAnalyze() {
+      const leftPath = $('leftPath').value.trim();
+      const rightPath = $('rightPath').value.trim();
+      if (!leftPath || !rightPath) {
+        alert('左右路径都要填写。');
+        return;
+      }
+      $('runBtn').disabled = true;
+      $('runBtn').textContent = '分析中...';
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ left_path: leftPath, right_path: rightPath })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || '分析失败');
+        state.response = data;
+        state.selectedKey = data.files[0]?.key || null;
+        render();
+      } catch (err) {
+        $('fileList').innerHTML = `<div class="empty">${escapeHtml(err.message || String(err))}</div>`;
+        $('viewerBody').innerHTML = '<div class="empty">分析失败，未生成结果。</div>';
+        $('noteBox').innerHTML = '<div class="empty">分析失败。</div>';
+        $('focusBox').innerHTML = '<div class="empty">分析失败。</div>';
+        $('skipBox').innerHTML = '';
+        $('decisionBox').textContent = '没有可用结果。';
+        $('viewerPath').textContent = '';
+        $('runtimeNote').textContent = '分析失败';
+      } finally {
+        $('runBtn').disabled = false;
+        $('runBtn').textContent = '开始审计';
+      }
+    }
+
+    function initFromQuery() {
+      const url = new URL(window.location.href);
+      const left = url.searchParams.get('left') || '';
+      const right = url.searchParams.get('right') || '';
+      if (!left || !right) return;
+      $('leftPath').value = left;
+      $('rightPath').value = right;
+      $('runtimeNote').textContent = '已从链接带入路径';
+      runAnalyze();
+    }
+
+    function render() {
+      renderFiles();
+      renderDetail();
+      $('runtimeNote').textContent = state.response.runtime_note || '已完成';
+    }
+
+    function renderFiles() {
+      const files = state.response.files || [];
+      $('countPill').textContent = `${files.length} 个改动`;
+      $('fileList').innerHTML = files.map(file => {
+        const meta = pathMeta(file.path);
+        return `
+          <div class="file-item ${file.key === state.selectedKey ? 'active' : ''}" data-key="${file.key}">
+            <div class="file-top">
+              <div class="path-stack" title="${escapeHtml(file.path)}">
+                <div class="file-name">${escapeHtml(meta.file)}</div>
+                <div class="file-dir">${escapeHtml(meta.dir)}</div>
+              </div>
+              <span class="badge ${file.risk}">${riskText(file.risk)}</span>
+            </div>
+            <div class="reason">${escapeHtml(file.reason)}</div>
+            <div class="stat">${escapeHtml(file.mode)} · 变更 ${file.change_count} · +${file.added_count} / -${file.removed_count}</div>
+          </div>
+        `;
+      }).join('');
+      document.querySelectorAll('.file-item').forEach(el => {
+        el.addEventListener('click', () => {
+          state.selectedKey = el.dataset.key;
+          renderFiles();
+          renderDetail();
+        });
+      });
+    }
+
+    function renderDetail() {
+      const detail = (state.response.details || []).find(x => x.key === state.selectedKey);
+      if (!detail) {
+        $('viewerBody').innerHTML = '<div class="empty">没有可显示的明细。</div>';
+        $('noteBox').innerHTML = '<div class="empty">没有可显示的定位说明。</div>';
+        $('focusBox').innerHTML = '<div class="empty">没有可显示的重点。</div>';
+        $('skipBox').innerHTML = '';
+        $('viewerPath').textContent = '';
+        $('decisionBox').textContent = state.response.summary || '没有结果';
+        return;
+      }
+
+      const meta = pathMeta(detail.path);
+      $('viewerTitle').textContent = meta.file;
+      $('viewerSub').textContent = state.response.summary;
+      $('viewerPath').textContent = meta.dir;
+      $('modePill').textContent = detail.mode === 'article' ? '文章审校' : '代码评审';
+
+      const fileMeta = (state.response.files || []).find(x => x.key === detail.key);
+      $('riskPill').textContent = fileMeta ? riskText(fileMeta.risk) : '已分析';
+      $('signalBox').innerHTML = (fileMeta?.signals || []).map(s => `<span class="signal">${escapeHtml(s)}</span>`).join('');
+
+      $('noteBox').innerHTML = renderNotes(detail);
+      bindNoteClicks();
+
+      $('focusBox').innerHTML = (detail.focus || []).map(item => `
+        <div class="focus-card">
+          <div class="focus-top">
+            <strong>${escapeHtml(item.title)}</strong>
+            <span class="badge ${item.severity}">${riskText(item.severity)}</span>
+          </div>
+          <p>${escapeHtml(item.text)}</p>
+        </div>
+      `).join('') || '<div class="empty">没有重点提示。</div>';
+
+      $('skipBox').innerHTML = (detail.skip || []).map(s => `<li>${escapeHtml(s)}</li>`).join('');
+      $('decisionBox').textContent = detail.decision || '没有规则结论。';
+
+      if (detail.mode === 'article') {
+        $('viewerBody').innerHTML = renderArticle(detail);
+      } else {
+        $('viewerBody').innerHTML = renderCode(detail);
+      }
+    }
+
+    function renderNotes(detail) {
+      const notes = detail.notes || [];
+      const highRiskNotes = notes.filter(note => note.severity === 'high');
+      if (!highRiskNotes.length) {
+        return '<div class="empty">这个文件有改动，但我暂时没有识别到需要重点报警的高风险差异。</div>';
+      }
+      return highRiskNotes.map(note => `
+        <button class="note-card high" data-line-index="${note.line_index}">
+          <div class="note-top">
+            <strong>${escapeHtml(note.title)}</strong>
+            <span class="badge ${note.severity}">${riskText(note.severity)}</span>
+          </div>
+          <div class="note-loc">${escapeHtml(noteLocation(note))}</div>
+          <div class="note-label">我认为这里高风险的原因</div>
+          <div class="note-text">${escapeHtml(note.text)}</div>
+          ${note.snippet ? `<div class="note-snippet">${escapeHtml(note.snippet)}</div>` : ''}
+        </button>
+      `).join('');
+    }
+
+    function bindNoteClicks() {
+      document.querySelectorAll('.note-card[data-line-index]').forEach(el => {
+        el.addEventListener('click', () => jumpToLine(Number(el.dataset.lineIndex)));
+      });
+    }
+
+    function jumpToLine(index) {
+      const row = document.querySelector(`[data-line-index="${index}"]`);
+      if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.add('flash');
+      window.setTimeout(() => row.classList.remove('flash'), 1600);
+    }
+
+    function renderCode(detail) {
+      const highRiskIndexes = highRiskLineIndexes(detail);
+      const rows = (detail.lines || []).map((line, idx) => `
+        <div class="line ${line.kind} ${highRiskIndexes.has(idx) ? 'risk-high' : ''}" id="line-${idx}" data-line-index="${idx}">
+          <div class="num">${line.left_no || ''}</div>
+          <div class="txt before">${escapeHtml(line.left || '')}</div>
+          <div class="num">${line.right_no || ''}</div>
+          <div class="txt after ${highRiskIndexes.has(idx) ? 'risk-high-text' : ''}">${escapeHtml(line.right || '')}</div>
+        </div>
+      `).join('');
+      return `
+        <div class="pane">
+          <div class="pane-head">
+            <h3>并排差异</h3>
+            <span>左边是旧版，右边是新版；只有我判断为高风险的位置会用红色强调</span>
+          </div>
+          <div class="lines">
+            <div class="line head">
+              <div class="num">旧行</div>
+              <div class="txt head">Before</div>
+              <div class="num">新行</div>
+              <div class="txt head after-head">After</div>
+            </div>
+            ${rows}
+          </div>
+        </div>
+      `;
+    }
+
+    function highRiskLineIndexes(detail) {
+      const indexes = new Set();
+      (detail.notes || []).forEach(note => {
+        if (note.severity === 'high') indexes.add(note.line_index);
+      });
+      return indexes;
+    }
+
+    function renderArticle(detail) {
+      const before = (detail.before_blocks || []).map((txt, i) => `<div class="block del"><h4>旧版段落 ${i + 1}</h4>${escapeHtml(txt)}</div>`).join('');
+      const after = (detail.after_blocks || []).map((txt, i) => `<div class="block add"><h4>新版段落 ${i + 1}</h4>${escapeHtml(txt)}</div>`).join('');
+      return `
+        <div class="pane">
+          <div class="pane-head"><h3>段落对照</h3><span>文章模式按段展示</span></div>
+          <div class="body articles">
+            ${before || '<div class="empty">旧版为空。</div>'}
+            ${after || '<div class="empty">新版为空。</div>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function pathMeta(path) {
+      const normalized = String(path || '').replace(/\\\\/g, '/');
+      const parts = normalized.split('/');
+      const file = parts.pop() || normalized || '(unknown)';
+      const dir = parts.join('/') || '当前目录';
+      return { file, dir };
+    }
+
+    function noteLocation(note) {
+      if (note.left_no && note.right_no) return `定位：旧 ${note.left_no} 行 / 新 ${note.right_no} 行`;
+      if (note.left_no) return `定位：旧 ${note.left_no} 行`;
+      if (note.right_no) return `定位：新 ${note.right_no} 行`;
+      return '定位：差异行';
+    }
+
+    function riskText(r) {
+      return ({ high: '高风险', mid: '中风险', low: '低风险' }[r]) || r;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+  </script>
+</body>
+</html>
